@@ -312,7 +312,6 @@ class statistics:
         self.stat3 = []
         self.stat4 = []
         self.stat5 = []
-        self.stat6 = []
         self.code_seq = []
         self.cov_pt_sig = []
         self.last_meta = []
@@ -755,6 +754,11 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
 
                     regs_to_track_immutable, regs_to_track_mutable, instrs_to_track = instr.get_elements_to_track(xlen)
 
+                    print('COVPT HIT')
+                    print(mnemonic)
+                    print('CHANGES:',regs_to_track_immutable, regs_to_track_mutable, instrs_to_track)
+                    print('BEFORE:',tracked_regs_immutable, tracked_regs_mutable, tracked_instrs)
+
                     # update tracked elements
                     for reg in regs_to_track_immutable:
                         if reg in tracked_regs_immutable or reg in tracked_regs_mutable:
@@ -785,6 +789,10 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
                         tracked_instrs.append((instrs, instr.instr_addr))
 
                     instr_stat_meta_at_addr[instr.instr_addr] = [hit_uniq_covpt, num_exp, 0, num_exp, ucovpt if hit_uniq_covpt else covpt, [], [], []]
+
+                    print('AFTER:',tracked_regs_immutable, tracked_regs_mutable, tracked_instrs)
+                    print('META:',instr_stat_meta_at_addr[instr.instr_addr])
+                    print("-"*10 + '\n')
                 else:
                     changed_regs = instr.get_changed_regs(arch_state, csr_regfile)
 
@@ -837,8 +845,14 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
                         logger.debug('Signature update : ' + str(hex(store_address)))
                         stats.stat5.append((store_address, store_val, ucovpt, stats.code_seq))
 
+                        print('SIG UPDATE')
+                        print(mnemonic)
+                        print('STORE:', hex(store_address), "<-", store_val)
+                        print('BEFORE:', tracked_regs_immutable, tracked_regs_mutable, instrs_to_track)
+
                         if rs2 in tracked_regs_immutable or rs2 in tracked_regs_mutable:
                             stat_meta = instr_stat_meta_at_addr[instr_addr_of_tracked_reg[rs2]]
+                            print('META:', stat_meta)
                             stat_meta[2] += 1 # increase num observed
                             stat_meta[3] -= 1 # decrease num remaining
                             stat_meta[6].append(store_address) # add to store_addresses
@@ -848,6 +862,7 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
                             tracked_regs_mutable.discard(rs2)
                             del instr_addr_of_tracked_reg[rs2]
                         elif instrs_to_track and instr.instr_name in instrs_to_track[0][0]:
+                            print('META:', stat_meta)
                             stat_meta = instr_stat_meta_at_addr[instrs_to_track[0][1]]
                             stat_meta[2] += 1
                             stat_meta[3] -= 1
@@ -867,6 +882,9 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
                                 stats.stat4.append(_log + '\n\n')
 
                         stats.code_seq = []
+
+                        print('AFTER:', tracked_regs_immutable, tracked_regs_mutable, instrs_to_track)
+                        print("-"*10 + '\n')
 
             # update stats
             for key_instr_addr in list(instr_stat_meta_at_addr.keys()):
@@ -898,6 +916,8 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
 
                         logger.warn(_log)
                         stats.stat2.append(_log + '\n\n')
+
+                    del instr_stat_meta_at_addr[key_instr_addr]
 
             instr.update_arch_state(arch_state, csr_regfile)
 
